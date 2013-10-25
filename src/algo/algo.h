@@ -276,6 +276,30 @@ class FlatMemoryJoiner : public HashBase {
 		vector<WriteTable*> result;
 };
 
+class SortMergeJoiner{
+public:
+	SortMergeJoiner(const libconfig::Config& cfg);
+	~SortMergeJoiner();
+
+	void sort();
+	void merge();
+
+private:
+	/* s1, s2 are the two inputs, sout the output, sbuild the way the
+	 * hash table has been built.
+	 */
+	Schema* s1, * s2, * sout;
+	/*
+	 * select attribute on the table
+	 * */
+	vector<unsigned int> sel1, sel2;
+	/*
+	 * join operator linked in which attributes
+	 * */
+	unsigned int ja1, ja2, size, s1cols;
+
+};
+
 //#include "build.inl"
 //#include "probe.inl"
 

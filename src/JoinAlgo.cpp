@@ -83,11 +83,13 @@ void* compute(void* value) {
 	aff.affinitize(threadid);
 
 	barrier->Arrive();	// sync
+	// 全局变量，用这个来同步
 
 	if (threadid == 0) initchkpt();
 	SplitResult tin = partitioner->split(threadid);
 	SplitResult tout = partitioner2->split(threadid);
 
+	// 全局变量，用这个来同步
 	barrier->Arrive();	// sync
 
 	if (threadid == 0) partchkpt();
