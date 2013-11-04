@@ -1,0 +1,12 @@
+这个是multijoin的实验部分，我将其整个重新扣出来
+但是发现有些问题：
+1，在扣出来的代码中，运行partition的时间是72934286，运行build+partition的时间是7824267986
+                                    69070433                           526121541
+                                    11973774                           445273196
+说明数据在排过序的情况下，build的时间是大概没有排过序的时候的1/15，有时候会有20倍的差距
+
+2，ready to implement sort-merge join by using quicksort 
+  two phase: 
+           1, use the quick sort algorithm to sort the two relations
+           2, merge the two relations in the cost of O(m+n)
+    
