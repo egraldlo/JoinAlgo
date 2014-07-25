@@ -310,8 +310,11 @@ int main(int argc, char** argv) {
 	}
 
 	// bye
+	double t=timer;
+	double t2=timer2;
+	double t3=timer3;
 	cout << endl << "RUNTIME TOTAL, BUILD+PART, PART (cycles): " << endl;
-	cout << timer << "\t" << timer2 << "\t" << timer3 << endl;
+	cout << t/CPUSEQ << "s\t" << t2/CPUSEQ << "s\t" << t3/CPUSEQ << "s\t" <<endl;
 
 	delete[] ta;
 	return 0;

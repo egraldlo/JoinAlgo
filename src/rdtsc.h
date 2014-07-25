@@ -19,6 +19,8 @@
 extern "C" {
 #endif
 
+#define CPUSEQ 3200000000
+
 #if !defined(__i386__) && !defined(__x86_64__) && !defined(__sparc__)
 #warning No supported architecture found -- timers will return junk.
 #endif

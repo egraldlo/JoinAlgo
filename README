@@ -9,4 +9,9 @@
   two phase: 
            1, use the quick sort algorithm to sort the two relations
            2, merge the two relations in the cost of O(m+n)
+           
+3, how to use?
+	first, generate the data, .generate.sh
+   second, compile the source code
+    third, JoinAlgo conf/000001_no.conf
     
