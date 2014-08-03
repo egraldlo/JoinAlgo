@@ -19,6 +19,8 @@
 #define __MYALGO__
 
 #include <vector>
+#include <iostream>
+using namespace std;
 #include <libconfig.h++>
 #include "../table.h"
 #include "../hash.h"
@@ -26,6 +28,7 @@
 #include "../Barrier.h"
 #include "../partitioner.h"
 #include "hashtable.h"
+#include <c++/4.4.4/cstdlib>
 
 /* 1 is inner! */
 
@@ -276,13 +279,135 @@ class FlatMemoryJoiner : public HashBase {
 		vector<WriteTable*> result;
 };
 
+struct Snode{
+	void *data;
+	Snode *next;
+};
+
 class SortMergeJoiner{
 public:
-	SortMergeJoiner(const libconfig::Config& cfg);
-	~SortMergeJoiner();
+	SortMergeJoiner(const libconfig::Config& cfg){
+		cout<<"creating sortmerge join! "<<endl;
+	};
+	~SortMergeJoiner(){};
 
-	void sort();
-	void merge();
+	Snode* findMiddle(Snode *head){
+		Snode *fast=head;
+		Snode *slow=head;
+		while(fast->next!=0&&fast->next->next!=0){
+			fast=fast->next->next;
+			slow=slow->next;
+		}
+		return slow;
+	}
+
+	bool CompareTwoTuple(Snode *left, Snode* right){
+		Comparator *c=new Comparator();
+		ColumnSpec cl(CT_LONG,8);
+		ColumnSpec cr(CT_LONG,8);
+		c->init(cl,0,cr,0);
+		return c->lessthan(left->data,right->data);
+//		int flag;
+//		const void *lt,*rt;
+//		for(unsigned i=0;i<state_.orderbyKey_.size();i++){
+//			lt=state_.input_->getColumnAddess(state_.orderbyKey_[i],left->tuple);
+//			rt=state_.input_->getColumnAddess(state_.orderbyKey_[i],right->tuple);
+//			if(state_.input_->getcolumn(state_.orderbyKey_[i]).operate->equal(lt,rt)){
+//				flag=0;
+//			}
+//			else if(state_.input_->getcolumn(state_.orderbyKey_[i]).operate->less(lt,rt)){
+//				flag=1;
+//			}
+//			else{
+//				flag=2;
+//			}
+//			if(flag==0)
+//				continue;
+//			if(flag==1)
+//				return true;
+//			if(flag==2)
+//				return false;
+//		}
+//		return true;
+
+	}
+
+	Snode* mergeTwoList(Snode *left, Snode *right){
+		Snode *ret=(Snode *)malloc(sizeof(Snode));
+		ret->data=0;ret->next=0;
+		Snode *r=ret;
+		while(left!=0&&right!=0){
+			/* compare the two tuple by using the schema. */
+			if(CompareTwoTuple(left,right)){
+				ret->next=left;
+				ret=left;
+				left=left->next;
+			}
+			else{
+				ret->next=right;
+				ret=right;
+				right=right->next;
+			}
+		}
+		while(left!=0){
+			ret->next=left;
+			ret=left;
+			left=left->next;
+		}
+		while(right!=0){
+			ret->next=right;
+			ret=right;
+			right=right->next;
+		}
+		return r->next;
+	}
+
+	/*
+	 * quick and slow pointer to find the middle node and merge sort.
+	 * */
+	Snode* cmsort(Snode *root){
+		if(root==0||root->next==0)
+			return root;
+		Snode *first=root;
+		Snode *middle=findMiddle(root);
+		Snode *second=middle->next;
+		middle->next=0;
+		Snode *l1=cmsort(first);
+		Snode *l2=cmsort(second);
+		return mergeTwoList(l1,l2);
+	}
+
+	Snode* sort(Table *&t){
+		Snode *head=(Snode *)malloc(sizeof(Snode));
+		head->data=0;head->next=0;
+		Snode *p=head;
+		LinkedTupleBuffer *ltb=t->getRoot();
+		while(ltb!=0){
+			TupleBuffer::Iterator itr=ltb->createIterator();
+			void *src=0;
+			while((src=itr.next())!=0){
+				Snode *n=(Snode *)malloc(sizeof(Snode));
+				n->data=malloc(s1->getTupleSize());
+				s1->copyTuple(n->data,src);
+				n->next=0;
+				p->next=n;
+				p=p->next;
+			}
+			ltb=ltb->getNext();
+		}
+
+		return cmsort(head->next);
+	};
+
+	void print(Table *t){
+		Snode *s=sort(t);
+		while(s!=0){
+			cout<<"sorted: "<<(long*)(s->data)<<endl;
+			s=s->next;
+		}
+	}
+
+	void merge(Table *t1, Table *t2){};
 
 private:
 	/* s1, s2 are the two inputs, sout the output, sbuild the way the

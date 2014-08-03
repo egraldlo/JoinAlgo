@@ -18,6 +18,9 @@
 #include "affinitizer.h"
 #include "exceptions.h"
 
+#include <iostream>
+using namespace std;
+
 #ifdef linux
 #include <sched.h>
 #include <sys/syscall.h>
@@ -32,6 +35,7 @@ void Affinitizer::affinitize(int threadid)
 {
 	// If oversubscribing, let OS figure it out.
 	//
+	cout<<totalthreads<<" "<<totalcpus<<endl;
 	if (totalthreads > totalcpus) {
 		return;
 	}

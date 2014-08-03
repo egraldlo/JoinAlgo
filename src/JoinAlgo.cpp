@@ -111,7 +111,51 @@ void* compute(void* value) {
 	return 0;
 }
 
-int main(int argc, char** argv) {
+int main_sortmerge(int argc, char** argv) {
+	Config cfg;
+
+	cfg.readFile(argv[1]);
+
+	string datapath, leftfilename, rightfilename;
+	vector<unsigned int> select1, select2;
+	Table *t1,*t2;
+	Schema s1,s2;
+	unsigned int bucksize;
+
+	datapath = (const char*) cfg.lookup("path");
+	bucksize = cfg.lookup("bucksize");
+
+	s1 = Schema::create(cfg.lookup("left.schema"));
+	WriteTable wr1;
+	wr1.init(&s1, bucksize);
+	t1 = &wr1;
+	leftfilename = (const char*) cfg.lookup("left.file");
+	joinattr1 = cfg.lookup("left.jattr");
+	joinattr1--;
+	select1 = createIntVector(cfg.lookup("left.select"));
+
+	s2 = Schema::create(cfg.lookup("right.schema"));
+	WriteTable wr2;
+	wr2.init(&s2, bucksize);
+	t2 = &wr2;
+	rightfilename = (const char*) cfg.lookup("right.file");
+	joinattr2 = cfg.lookup("right.jattr");
+	joinattr2--;
+	select2 = createIntVector(cfg.lookup("right.select"));
+
+	wr1.load(datapath+leftfilename,"|");
+	wr2.load(datapath+rightfilename,"|");
+
+	SortMergeJoiner *sj=new SortMergeJoiner(cfg);
+	sj->print(t1);
+	sj->sort(t2);
+
+	sj->merge(t1,t2);
+
+	return 0;
+}
+
+int main_hashjoin(int argc, char** argv) {
 	ThreadArg* ta;
 	int nothreads;
 
@@ -319,3 +363,10 @@ int main(int argc, char** argv) {
 	delete[] ta;
 	return 0;
 }
+
+
+int main(int argc, char** argv){
+//	return main_hashjoin(argc,argv);
+	return main_sortmerge(argc,argv);
+}
+
