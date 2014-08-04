@@ -45,6 +45,7 @@ BaseAlgo* joiner;
 vector<PageCursor*> joinresult;
 HashFunction* hashfn;
 unsigned long long timer, timer2, timer3;
+unsigned long long timesm,timesm1;
 PThreadLockCVBarrier* barrier;
 Lock joinresultlock;
 Partitioner* partitioner, * partitioner2;
@@ -118,8 +119,8 @@ int main_sortmerge(int argc, char** argv) {
 
 	string datapath, leftfilename, rightfilename;
 	vector<unsigned int> select1, select2;
-	Table *t1,*t2;
-	Schema s1,s2;
+	Table *t1,*t2,*out;
+	Schema s1,s2,sout;
 	unsigned int bucksize;
 
 	datapath = (const char*) cfg.lookup("path");
@@ -143,14 +144,29 @@ int main_sortmerge(int argc, char** argv) {
 	joinattr2--;
 	select2 = createIntVector(cfg.lookup("right.select"));
 
+	sout = Schema::create(cfg.lookup("out.schema"));
+	WriteTable wout;
+	wout.init(&sout,bucksize);
+	out = &wout;
+
 	wr1.load(datapath+leftfilename,"|");
 	wr2.load(datapath+rightfilename,"|");
 
 	SortMergeJoiner *sj=new SortMergeJoiner(cfg);
-	sj->print(t1);
-	sj->sort(t2);
+	startTimer(&timesm);
+	startTimer(&timesm1);
+	sj->print(t1,t2);
+	sj->cmsort(sj->left);
+	sj->cmsort(sj->right);
+	cout<<"finished sorting!"<<endl;
+	stopTimer(&timesm1);
+	double sm1=timesm1;
+	cout <<"sort time: "<< sm1/CPUSEQ << endl;
+	sj->merge(out);
 
-	sj->merge(t1,t2);
+	stopTimer(&timesm);
+	double sm=timesm;
+	cout <<"total time: "<< sm/CPUSEQ << endl;
 
 	return 0;
 }
@@ -366,7 +382,8 @@ int main_hashjoin(int argc, char** argv) {
 
 
 int main(int argc, char** argv){
-//	return main_hashjoin(argc,argv);
-	return main_sortmerge(argc,argv);
+//	main_hashjoin(argc,argv);
+	main_sortmerge(argc,argv);
+	return 0;
 }
 

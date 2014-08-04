@@ -288,6 +288,11 @@ class SortMergeJoiner{
 public:
 	SortMergeJoiner(const libconfig::Config& cfg){
 		cout<<"creating sortmerge join! "<<endl;
+		count=0;
+		c=new Comparator();
+		ColumnSpec cl(CT_LONG,0);
+		ColumnSpec cr(CT_LONG,0);
+		c->init(cl,8,cr,8);
 	};
 	~SortMergeJoiner(){};
 
@@ -301,35 +306,16 @@ public:
 		return slow;
 	}
 
-	bool CompareTwoTuple(Snode *left, Snode* right){
-		Comparator *c=new Comparator();
-		ColumnSpec cl(CT_LONG,8);
-		ColumnSpec cr(CT_LONG,8);
-		c->init(cl,0,cr,0);
-		return c->lessthan(left->data,right->data);
-//		int flag;
-//		const void *lt,*rt;
-//		for(unsigned i=0;i<state_.orderbyKey_.size();i++){
-//			lt=state_.input_->getColumnAddess(state_.orderbyKey_[i],left->tuple);
-//			rt=state_.input_->getColumnAddess(state_.orderbyKey_[i],right->tuple);
-//			if(state_.input_->getcolumn(state_.orderbyKey_[i]).operate->equal(lt,rt)){
-//				flag=0;
-//			}
-//			else if(state_.input_->getcolumn(state_.orderbyKey_[i]).operate->less(lt,rt)){
-//				flag=1;
-//			}
-//			else{
-//				flag=2;
-//			}
-//			if(flag==0)
-//				continue;
-//			if(flag==1)
-//				return true;
-//			if(flag==2)
-//				return false;
-//		}
-//		return true;
-
+	int CompareTwoTuple(Snode *left, Snode* right){
+		void *l=reinterpret_cast<char *>(left->data);
+		void *r=reinterpret_cast<char *>(right->data);
+		if(c->lessthan(l,r)){
+			return 0;
+		}
+		if(c->equal(l,r)){
+			return 1;
+		}
+		return 2;
 	}
 
 	Snode* mergeTwoList(Snode *left, Snode *right){
@@ -338,7 +324,7 @@ public:
 		Snode *r=ret;
 		while(left!=0&&right!=0){
 			/* compare the two tuple by using the schema. */
-			if(CompareTwoTuple(left,right)){
+			if(CompareTwoTuple(left,right)==0){
 				ret->next=left;
 				ret=left;
 				left=left->next;
@@ -384,36 +370,94 @@ public:
 		LinkedTupleBuffer *ltb=t->getRoot();
 		while(ltb!=0){
 			TupleBuffer::Iterator itr=ltb->createIterator();
-			void *src=0;
-			while((src=itr.next())!=0){
+			void *src=itr.next();
+			while(src!=0){
 				Snode *n=(Snode *)malloc(sizeof(Snode));
-				n->data=malloc(s1->getTupleSize());
-				s1->copyTuple(n->data,src);
+				n->data=(char *)malloc(t->schema()->getTupleSize());
+				t->schema()->copyTuple(n->data,src);
 				n->next=0;
 				p->next=n;
 				p=p->next;
+				src=itr.next();
 			}
 			ltb=ltb->getNext();
 		}
 
-		return cmsort(head->next);
+		return head->next;
 	};
 
-	void print(Table *t){
-		Snode *s=sort(t);
-		while(s!=0){
-			cout<<"sorted: "<<(long*)(s->data)<<endl;
-			s=s->next;
-		}
+	void print(Table *t1,Table *t2){
+		left=sort(t1);
+		right=sort(t2);
+//		Snode *s=left;
+//		while(s!=0){
+//			cout<<"sorted: "<<*(long *)(s->data+8)<<endl;
+//			s=s->next;
+//		}
+//
+//		s=right;
+//		while(s!=0){
+//			cout<<"sorted: "<<*(long *)(s->data+8)<<endl;
+//			s=s->next;
+//		}
 	}
 
-	void merge(Table *t1, Table *t2){};
+	void merge(Table *&out){
+		cout<<"merge phase!"<<endl;
+		Snode *sl=left;
+		Snode *sr=right;
+		Snode *l_fake_buffer=0;
+		Snode *r_fake_buffer=0;
+		while(sl&&sr){
+			if(CompareTwoTuple(sl,sr)==1){
+				construct(out,sl,sr);
+				l_fake_buffer=sl->next;
+				r_fake_buffer=sr->next;
+				while(l_fake_buffer!=0){
+					if(CompareTwoTuple(l_fake_buffer,sr)==1){
+						construct(out,l_fake_buffer,sr);
+						l_fake_buffer=l_fake_buffer->next;
+					}
+					else{
+						break;
+					}
+				}
+				while(r_fake_buffer!=0){
+					if(CompareTwoTuple(sl,r_fake_buffer)==1){
+						construct(out,sl,r_fake_buffer);
+						r_fake_buffer=r_fake_buffer->next;
+					}
+					else{
+						break;
+					}
+				}
+				sl=sl->next;
+				sr=sr->next;
+			}
+			else if(CompareTwoTuple(sl,sr)==0){
+				sl=sl->next;
+			}
+			else{
+				sr=sr->next;
+			}
+		}
+	};
 
+	void construct(Table *&out, Snode *sl, Snode *sr){
+//		cout<<count++<<":         "<<*(long *)sl->data<<"|"<<*(long *)(sl->data+8)<<"|"<<*(long *)(sr->data)<<"|"<<*(long *)(sr->data+8)<<endl;
+
+
+//		getchar();
+	}
+
+	Snode *left,*right;
 private:
 	/* s1, s2 are the two inputs, sout the output, sbuild the way the
 	 * hash table has been built.
 	 */
 	Schema* s1, * s2, * sout;
+	unsigned count;
+	Comparator *c;
 	/*
 	 * select attribute on the table
 	 * */
