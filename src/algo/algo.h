@@ -351,22 +351,32 @@ public:
 	/*
 	 * quick and slow pointer to find the middle node and merge sort.
 	 * */
-	Snode* cmsort(Snode *root){
+
+	void cmsort(int i, int threadid){
+		Snode *s=head[i][threadid]->next;
+		head[i][threadid]=cmsortc(s);
+	}
+
+	Snode* cmsortc(Snode *root){
 		if(root==0||root->next==0)
 			return root;
 		Snode *first=root;
 		Snode *middle=findMiddle(root);
 		Snode *second=middle->next;
 		middle->next=0;
-		Snode *l1=cmsort(first);
-		Snode *l2=cmsort(second);
+		Snode *l1=cmsortc(first);
+		Snode *l2=cmsortc(second);
 		return mergeTwoList(l1,l2);
 	}
 
-	Snode* sort(Table *&t){
-		Snode *head=(Snode *)malloc(sizeof(Snode));
-		head->data=0;head->next=0;
-		Snode *p=head;
+	void sort(Table *&t, Table *&t1){
+		Snode *p[4];
+		for(unsigned i=0;i<4;i++){
+			head[0][i]=(Snode *)malloc(sizeof(Snode));
+			head[0][i]->data=0;head[0][i]->next=0;
+			p[i]=head[0][i];
+		}
+		int i=0;Snode *tmp;
 		LinkedTupleBuffer *ltb=t->getRoot();
 		while(ltb!=0){
 			TupleBuffer::Iterator itr=ltb->createIterator();
@@ -375,20 +385,48 @@ public:
 				Snode *n=(Snode *)malloc(sizeof(Snode));
 				n->data=(char *)malloc(t->schema()->getTupleSize());
 				t->schema()->copyTuple(n->data,src);
+				i=(*(long *)(src+8))%4;
 				n->next=0;
-				p->next=n;
-				p=p->next;
+				tmp=p[i];
+				tmp->next=n;
+				tmp=tmp->next;
 				src=itr.next();
+				p[i]=tmp;
 			}
 			ltb=ltb->getNext();
 		}
 
-		return head->next;
+		for(unsigned i=0;i<4;i++){
+			head[1][i]=(Snode *)malloc(sizeof(Snode));
+			head[1][i]->data=0;head[1][i]->next=0;
+			p[i]=head[1][i];
+		}
+		int i1=0;Snode *tmp1;
+		LinkedTupleBuffer *ltb1=t1->getRoot();
+		while(ltb1!=0){
+			TupleBuffer::Iterator itr1=ltb1->createIterator();
+			void *src1=itr1.next();
+			while(src1!=0){
+				Snode *n1=(Snode *)malloc(sizeof(Snode));
+				n1->data=(char *)malloc(t1->schema()->getTupleSize());
+				t1->schema()->copyTuple(n1->data,src1);
+				i1=(*(long *)(src1+8))%4;
+				n1->next=0;
+				tmp1=p[i1];
+				tmp1->next=n1;
+				tmp1=tmp1->next;
+				src1=itr1.next();
+				p[i]=tmp1;
+			}
+			ltb1=ltb1->getNext();
+		}
+
+//		return head->next;
 	};
 
 	void print(Table *t1,Table *t2){
-		left=sort(t1);
-		right=sort(t2);
+//		left=sort(t1);
+//		right=sort(t2);
 //		Snode *s=left;
 //		while(s!=0){
 //			cout<<"sorted: "<<*(long *)(s->data+8)<<endl;
@@ -402,20 +440,20 @@ public:
 //		}
 	}
 
-	void merge(Table *&out){
+	void merge(int threadid){
 		cout<<"merge phase!"<<endl;
-		Snode *sl=left;
-		Snode *sr=right;
+		Snode *sl=head[0][threadid];
+		Snode *sr=head[1][threadid];
 		Snode *l_fake_buffer=0;
 		Snode *r_fake_buffer=0;
 		while(sl&&sr){
 			if(CompareTwoTuple(sl,sr)==1){
-				construct(out,sl,sr);
+				construct(sl,sr);
 				l_fake_buffer=sl->next;
 				r_fake_buffer=sr->next;
 				while(l_fake_buffer!=0){
 					if(CompareTwoTuple(l_fake_buffer,sr)==1){
-						construct(out,l_fake_buffer,sr);
+						construct(l_fake_buffer,sr);
 						l_fake_buffer=l_fake_buffer->next;
 					}
 					else{
@@ -424,7 +462,7 @@ public:
 				}
 				while(r_fake_buffer!=0){
 					if(CompareTwoTuple(sl,r_fake_buffer)==1){
-						construct(out,sl,r_fake_buffer);
+						construct(sl,r_fake_buffer);
 						r_fake_buffer=r_fake_buffer->next;
 					}
 					else{
@@ -443,8 +481,8 @@ public:
 		}
 	};
 
-	void construct(Table *&out, Snode *sl, Snode *sr){
-//		cout<<count++<<":         "<<*(long *)sl->data<<"|"<<*(long *)(sl->data+8)<<"|"<<*(long *)(sr->data)<<"|"<<*(long *)(sr->data+8)<<endl;
+	void construct(Snode *sl, Snode *sr){
+		cout<<count++<<":         "<<*(long *)sl->data<<"|"<<*(long *)(sl->data+8)<<"|"<<*(long *)(sr->data)<<"|"<<*(long *)(sr->data+8)<<endl;
 
 
 //		getchar();
@@ -458,6 +496,7 @@ private:
 	Schema* s1, * s2, * sout;
 	unsigned count;
 	Comparator *c;
+	Snode *head[2][4];//hard code
 	/*
 	 * select attribute on the table
 	 * */

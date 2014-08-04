@@ -51,6 +51,9 @@ Lock joinresultlock;
 Partitioner* partitioner, * partitioner2;
 Affinitizer aff;
 
+#define THREADS_NUM 4
+SortMergeJoiner *sj;
+
 vector<unsigned int> createIntVector(const Setting& line) {
 	vector<unsigned int> ret;
 	for (int i=0; i<line.getLength(); ++i) {
@@ -77,6 +80,17 @@ inline void buildchkpt(void) {
 
 inline void probechkpt(void) {
 	stopTimer(&timer);	// stop clock
+}
+
+void* sortmerge(void *value) {
+	int threadid=reinterpret_cast<ThreadArg*>(value)->threadid;
+	sj->cmsort(0,threadid);
+	barrier->Arrive();
+	sj->cmsort(1,threadid);
+	barrier->Arrive();
+	sj->merge(threadid);
+	barrier->Arrive();
+	return 0;
 }
 
 void* compute(void* value) {
@@ -152,17 +166,31 @@ int main_sortmerge(int argc, char** argv) {
 	wr1.load(datapath+leftfilename,"|");
 	wr2.load(datapath+rightfilename,"|");
 
-	SortMergeJoiner *sj=new SortMergeJoiner(cfg);
 	startTimer(&timesm);
 	startTimer(&timesm1);
-	sj->print(t1,t2);
-	sj->cmsort(sj->left);
-	sj->cmsort(sj->right);
-	cout<<"finished sorting!"<<endl;
+	sj=new SortMergeJoiner(cfg);
+	sj->sort(t1,t2);
+
+	barrier = new PThreadLockCVBarrier(THREADS_NUM);
+	pthread_t *pool=new pthread_t[THREADS_NUM];
+	ThreadArg *ta=new ThreadArg[THREADS_NUM];
+	for(unsigned i=0;i<THREADS_NUM;i++){
+		ta->threadid=i;
+		pthread_create(&pool[i],0,sortmerge,&ta[i]);
+	}
+
+	for(unsigned i=0;i<THREADS_NUM;i++){
+		pthread_join(pool[i],0);
+	}
+
+//	sj->print(t1,t2);
+//	sj->cmsort(sj->left);
+//	sj->cmsort(sj->right);
+//	cout<<"finished sorting!"<<endl;
 	stopTimer(&timesm1);
 	double sm1=timesm1;
 	cout <<"sort time: "<< sm1/CPUSEQ << endl;
-	sj->merge(out);
+//	sj->merge(out);
 
 	stopTimer(&timesm);
 	double sm=timesm;

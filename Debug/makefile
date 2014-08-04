@@ -1,5 +1,5 @@
 ################################################################################
-# 自动生成的文件。不要编辑！
+# Automatically-generated file. Do not edit!
 ################################################################################
 
 -include ../makefile.init
@@ -8,9 +8,9 @@ RM := rm -rf
 
 # All of the sources participating in the build are defined here
 -include sources.mk
--include subdir.mk
--include src/subdir.mk
 -include src/algo/subdir.mk
+-include src/subdir.mk
+-include subdir.mk
 -include objects.mk
 
 ifneq ($(MAKECMDGOALS),clean)
@@ -38,18 +38,18 @@ endif
 
 # Add inputs and outputs from these tool invocations to the build variables 
 
-# 所有目标
+# All Target
 all: JoinAlgo
 
-# 工具调用
+# Tool invocations
 JoinAlgo: $(OBJS) $(USER_OBJS)
-	@echo '正在构建目标： $@'
-	@echo '正在调用： GNU C++ 链接器'
-	g++  -o"JoinAlgo" $(OBJS) $(USER_OBJS) $(LIBS)
-	@echo '已结束构建目标： $@'
+	@echo 'Building target: $@'
+	@echo 'Invoking: GNU C++ 链接器'
+	g++  -o "JoinAlgo" $(OBJS) $(USER_OBJS) $(LIBS)
+	@echo 'Finished building target: $@'
 	@echo ' '
 
-# 其他目标
+# Other Targets
 clean:
 	-$(RM) $(OBJS)$(C++_DEPS)$(C_DEPS)$(CC_DEPS)$(CPP_DEPS)$(EXECUTABLES)$(CXX_DEPS)$(C_UPPER_DEPS) JoinAlgo
 	-@echo ' '
