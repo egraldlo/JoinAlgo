@@ -4,6 +4,7 @@
 
 # Add inputs and outputs from these tool invocations to the build variables 
 CPP_SRCS += \
+../src/algo/SortMergeJoin.cpp \
 ../src/algo/base.cpp \
 ../src/algo/flatmem.cpp \
 ../src/algo/hashbase.cpp \
@@ -12,6 +13,7 @@ CPP_SRCS += \
 ../src/algo/storage.cpp 
 
 OBJS += \
+./src/algo/SortMergeJoin.o \
 ./src/algo/base.o \
 ./src/algo/flatmem.o \
 ./src/algo/hashbase.o \
@@ -20,6 +22,7 @@ OBJS += \
 ./src/algo/storage.o 
 
 CPP_DEPS += \
+./src/algo/SortMergeJoin.d \
 ./src/algo/base.d \
 ./src/algo/flatmem.d \
 ./src/algo/hashbase.d \
