@@ -14,4 +14,4 @@
 	first, generate the data, .generate.sh
    second, compile the source code
     third, JoinAlgo conf/000001_no.conf
-    
+    cd
